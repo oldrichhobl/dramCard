@@ -1,0 +1,694 @@
+﻿<!DOCTYPE html>
+<html><!--HTML5 doctype-->
+<!-- 
+dramCard
+
+-->
+<head>
+<meta http-equiv="Content-type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta http-equiv="Pragma" content="no-cache">
+
+<link href="css/icons.css" rel="stylesheet" type="text/css">
+<link href="css/icons.fa.css" rel="stylesheet" type="text/css">
+
+
+<link href="css/af.ui.css" rel="stylesheet" type="text/css">  
+<link href="my.css" rel="stylesheet" type="text/css">
+
+<script type="text/javascript" charset="utf-8" src="appframework.js"></script>
+
+<script type="text/javascript" charset="utf-8" src="audioSprt.js"></script>
+
+
+<script type="text/javascript" language="javascript">
+//initial event handler to detect when intel is ready to roll
+    isChrome = !!(window.chrome && chrome.webstore && chrome.webstore.install);
+    //setTimeout("onDeviceReady();", 2000);
+
+    
+//  When the program is ready
+    function ProgramReady() {
+        app.log("ProgramReady !! OKej ");
+        //hide splash screen now that our app is ready to run
+        setTimeout(function () {
+        $.ui.launch();
+        }, 250);
+        
+        // ****  ovladani tlacitek menu a back  ****
+        //document.addEventListener("menubutton", onMenuKeyDown, false );
+        document.addEventListener("backbutton", onBackKeyDown, false); 
+    
+    };
+
+   // Handle the back button    //
+   function onBackKeyDown() { 
+    $.ui.popup( {
+     title:"Ukončit ?",
+     message:"Ukončit program dramCard ?" ,
+     cancelText:"Pokračovat",
+     cancelCallback: function(){console.log("cancelled");},
+     doneText:"KONEC!",
+     doneCallback: function(){navigator.app.exitApp();},
+     cancelOnly:false
+    });
+    return true;
+    }
+    
+    function gotoPage(page)
+    {
+      console.log("gotoPage : #"+page);
+      location.href = "#"+page;
+    }
+    
+    
+</script>
+<script src="js/appframework.ui.min.js"></script>
+<script>
+    $.ui.autoLaunch  = false;
+    $.ui.useOSThemes = false; //Change this to false to force a device theme
+    $.ui.blockPageScroll();
+    $(document).ready(function () {
+        if ($.ui.useOSThemes && !$.os.ios && $("#afui").get(0).className !== "ios")
+            $("#afui").removeClass("ios");
+            
+            
+    }
+    );
+    
+
+$.ui.ready(
+    function(){
+    
+    $.ui.backButtonText='Zpět';
+    $.ui.showBackButton=true;
+ 
+       document.addEventListener("unloadpanel", onUnloadpanel, false);           
+       document.addEventListener("loadpanel", onLoadpanel, false);
+       // document.addEventListener("swipeUp", onSwipeup, false);           
+     }
+);
+ 
+ //tap 		similar to click
+ //singleTap	tapped once
+ //doubleTap 	two quick taps
+ //longTap 	Long press tap
+ //swipe 	screen was swiped
+ //swipeLeft 	screen was swiped left
+ //swipeRight 	screen was swiped right
+ //swipeUp 	screen was swiped up
+ //swipeDown 	screen was swiped down
+
+// This event handler is fired when panel is loaded
+    function onUnloadpanel(e) {
+     app.log("onUnloadpanel: "+e.srcElement.id);
+     }
+    function onLoadpanel(e) {
+     app.log("onLoadpanel: "+e.srcElement.id);
+     };   
+   
+// This event 
+    function onSwipeup(e) {
+     console.log("onSwipe UP: "+e.srcElement);
+
+     // navigator.notification.vibrateWithPattern([0, 100,100, 800]);
+    }
+    function onSwipedown(e) {
+     console.log("onSwipe Down: "+e.srcElement);
+
+     // navigator.notification.beep(1);
+     // navigator.notification.vibrateWithPattern([0, 100, 100, 200, 100, 400, 100, 800]);
+    }
+    function onTap(e) {
+     console.log("on Tap: "+e.srcElement+" id=" + e.srcElement.id+" type=" + e.type+" cX=" + e.clientX);
+
+	 if (navigator.notification) // if value defined
+		navigator.notification.vibrateWithPattern([0, 100]);
+     return true;
+    }
+
+
+</script>
+
+  <script type="text/javascript">    
+//***********************************************************
+//
+var aGlobalFsRoot
+var fs_ = null; // globals GJK, HTML5 File System
+function errorHandler(e) {
+    app.log("GJK001 errorHandler(), e=|" + e + '|');
+    console.log("GJK001 errorHandler(), e.code=|" + e.code + '|');
+    var msg = '';
+    //switch (e.code) {
+    switch (e.code) {
+    case FileError.QUOTA_EXCEEDED_ERR:
+        msg += 'QUOTA_EXCEEDED_ERR';
+        break;
+    case FileError.NOT_FOUND_ERR:
+        msg += 'NOT_FOUND_ERR';
+        break;
+    case FileError.SECURITY_ERR:
+        msg += 'SECURITY_ERR';
+        break;
+    case FileError.INVALID_MODIFICATION_ERR:
+        msg += 'INVALID_MODIFICATION_ERR';
+        break;
+    case FileError.INVALID_STATE_ERR:
+        msg += 'INVALID_STATE_ERR';
+        break;
+    default:
+        msg += 'Unknown Error';
+        break;
+    };
+    console.log('<p class="error">|' + msg + '|</p>');
+};
+
+function Prehraj(file)
+{
+  playFile(file);
+}
+
+
+function DownloadFile(url,fileURL)
+{
+// !! Assumes variable fileURL contains a valid URL to a path on the device,
+//    for example, cdvfile://localhost/persistent/path/to/downloads/
+//                            = adresar v interni pameti:  //path/to/dovnloads/
+
+var fileTransfer = new FileTransfer();
+var uri = encodeURI(url);
+// fileURL = 'cdvfile://localhost/persistent/path/to/downloads/Hlas.mp3';
+
+fileTransfer.download(
+    uri,
+    fileURL,
+    function(entry) {
+        console.log("download complete: " + entry.toURL());
+    },
+    function(error) {    
+//•1 =  FileTransferError.FILE_NOT_FOUND_ERR  
+//•2 =  FileTransferError.INVALID_URL_ERR  
+//•3 =  FileTransferError.CONNECTION_ERR  
+//•4 =  FileTransferError.ABORT_ERR  
+//•5 =  FileTransferError.NOT_MODIFIED_ERR 
+
+        console.log("download error source " + error.source);
+        console.log("download error target " + error.target);
+        console.log("download error code " + error.code);
+    },
+    false,
+    {
+        headers: {
+            "Authorization": "Basic dGVzdHVzZXJuYW1lOnRlc3RwYXNzd29yZA=="
+        }
+    }
+);
+
+}
+
+function OtevriFS()
+{
+  app.log("Otevri FS ");
+  console.log("Otevri FS ");
+  navigator.webkitPersistentStorage.requestQuota(1024*1024, 
+        function(grantedBytes) {
+            window.requestFileSystem(window.TEMPORARY, grantedBytes, 
+            function(fs) {
+	fs_ = fs;
+}, 
+                function(errorCode) {
+            alert("Storage not granted 1 . = " + errorCode.message);
+            }
+            )}, 
+        function(errorCode) {
+            alert("Storage not granted." + errorCode.message);
+        }
+    );
+  // onInitFs2(aGlobalFsRoot); //Uncaught TypeError: undefined is not a function 
+}
+function onInitFs(fs) {
+	fs_ = fs;
+};
+
+
+
+function vGJkWriteFile(fs) {
+
+    fs.root.getFile('log.txt', {
+        create: true
+    }, function (fileEntry) {
+        // Create a FileWriter object for our FileEntry (log.txt).
+        fileEntry.createWriter(function (fileWriter) {
+
+            fileWriter.onwriteend = function (e) {
+                console.log('GJK onInitFs2(), 2014.07.15. line= 1400, OK! Write into the client local sandbox FS completed OK.');
+                vGJkReadDir(fs);
+            };
+
+            fileWriter.onerror = function (e) {
+                console.log('Write failed: ' + e.toString());
+            };
+
+            // Create a new Blob and write it to log.txt.
+            var blob = new Blob(['Lorem Ipsum'], {
+                type: 'text/plain'
+            });
+
+            fileWriter.write(blob);
+
+        }, errorHandler);
+    }, errorHandler);
+};
+
+function vGJkCreateDirTree(rootDirEntry, folders) {
+
+    app.log('GJK vGJkCreateDirTree(fs), 2014.07.15. line= 1566, OK!');
+
+    // Throw out './' or '/' and move on to prevent something like '/foo/.//bar'.
+    if (folders[0] == '.' || folders[0] == '') {
+        folders = folders.slice(1);
+    }
+    rootDirEntry.getDirectory(folders[0], {
+        create: true
+    }, function (dirEntry) {
+        // Recursively add the new subfolder (if we still have another to create).
+        if (folders.length) {
+            console.log('GJK vGJkCreateDirTree(|' + folders.slice(1) + '|, 2014.07.15. line= 1575, OK!');
+
+            vGJkCreateDirTree(dirEntry, folders.slice(1));
+        }
+    }, errorHandler);
+};
+
+
+
+
+
+function downloadIcons(soubor){
+ // stáhne soubor z internetu
+  console.log("download Icons: " + soubor);
+//  stahneme to z internetu
+// !! Assumes variable fileURL contains a valid URL to a path on the device,
+//    for example, cdvfile://localhost/persistent/path/to/downloads/
+
+var fileURL = 'cdvfile://localhost/persistent/SHEETS/' + soubor ;
+var fileTransfer = new FileTransfer();
+var uri = encodeURI("http://www.dramatik.cz/SHEETS/" + soubor );
+
+fileTransfer.download(
+    uri,
+    fileURL,
+    function(entry) {
+        console.log("Soubor: " + soubor + " stazen do: " + entry.toURL());
+    },
+    function(error) {
+        console.log("download error source " + error.source);
+        console.log("download error target " + error.target);
+        console.log("download error code " + error.code);
+    },
+    false,
+    {
+        headers: {
+            "Authorization": "Basic dGVzdHVzZXJuYW1lOnRlc3RwYXNzd29yZA=="
+        }
+    }
+);
+// gotoPage("pageIcons");
+  $.ui.loadContent("#pageIcons",false,false,"top");
+  $.ui.setTitle('Ikony:Zinternetu ' + soubor);
+}
+
+function showiconsHus(soubor){
+ // prepise stranku husteikony
+  console.log("Show HusIcons: " + soubor);
+  //  tohle funguje  do adresare  interni pamet /SHEETS/
+       window.resolveLocalFileSystemURL( "cdvfile://localhost/persistent/SHEETS/"+soubor, gotFileHus, failXX);
+  // $.ui.updateContentDiv("#pageIcons",s);
+  
+  
+  // gotoPage("pageIcons");
+  $.ui.loadContent("#husteikony",false,false,"slide"); 
+  $.ui.setTitle('husteikony Ikony:: ' + soubor);
+}
+
+
+function showicons(soubor){
+ // prepise stranku pageIcons
+  console.log("Show Icons: " + soubor);
+
+  //  nacteni souboru z www
+	//This alias is a read-only pointer to the app itself  ??  to moc nefunguje
+	console.log("cordova.file.applicationDirectory:" + cordova.file.applicationDirectory );
+	console.log("cordova.file.applicationStorageDirectory:" + cordova.file.applicationStorageDirectory );
+	
+	
+  //  tohle funguje  do adresare  interni pamet /SHEETS/
+       window.resolveLocalFileSystemURL( "cdvfile://localhost/persistent/SHEETS/"+soubor, gotFileXX, failXX);
+  // $.ui.updateContentDiv("#pageIcons",s);
+  
+  
+  // gotoPage("pageIcons");
+  $.ui.loadContent("#pageIcons",false,false,"slide");
+  
+  $.ui.setTitle('Ikony:: ' + soubor);
+}
+
+// funkce volane po precteni souboru index.html
+function failXX(e) {
+	console.log("FileSystem Error failXX");
+	console.dir(e);	
+	}
+
+function gotFileHus(fileEntry) {
+
+	fileEntry.file(function(file) {
+		var reader = new FileReader();
+
+		reader.onloadend = function(e) {
+			// console.log("Text is: "+this.result);
+			document.querySelector("#husikony").innerHTML = makeListIconsHus(this.result);
+		}
+		reader.readAsText(file);
+	});
+
+}
+function gotFileXX(fileEntry) {
+
+	fileEntry.file(function(file) {
+		var reader = new FileReader();
+
+		reader.onloadend = function(e) {
+			// console.log("Text is: "+this.result);
+			document.querySelector("#textXX").innerHTML = makeListIcons(this.result);
+		}
+		reader.readAsText(file);
+	});
+
+}
+
+function makeListIcons(stext)
+// seznam ikon ze souboru icons.css
+{
+  var aOfL = stext.match(/[^\r\n]+/g);
+  var sout = 
+    		'<ul id="logtxt" class="list inset" style="font-size: 1.5em;color:yellow;" >';    	
+  var zac,end,nazev;  
+  for(i=0;i< aOfL.length; i++){
+    zac = aOfL[i].search('.icon.');
+    if (zac > -1 )
+      {
+        end = aOfL[i].search(':');
+        nazev = aOfL[i].substring(zac+6, end);
+        sout = sout + '<li class="icon big '+ nazev +'"> &nbsp;&nbsp;&nbsp;' + nazev + '</li>';
+      }
+    };
+  return sout + '</ul>    ';
+}
+function makeListIconsHus(stext)
+// Husty seznam ikon ze souboru icons.css
+{
+  var aOfL = stext.match(/[^\r\n]+/g);
+  var sout = 
+    		' ';    	
+  var zac,end,nazev,onclick;  
+  for(i=0;i< aOfL.length; i++){
+    zac = aOfL[i].search('.icon.');
+    if (zac > -1 )
+      {
+        end = aOfL[i].search(':');
+        nazev = aOfL[i].substring(zac+6, end);
+        onclick = 'onclick="javascript:showPopIkona(' + "'"+nazev+"'" + ')" ';
+        
+        sout = sout + '<a class="icon big '+ nazev +'" ' + onclick + '> &nbsp; </a>';
+      }
+    };
+  return sout ;
+}
+
+
+</script>
+
+</head>
+
+<body>
+
+ <!-- *****  animace pro cekani *****   -->
+ <div id="waitblock" class="waitblock1">
+ 
+ <div >
+   <div id="helptx">
+   nic 
+   </div>
+  <!--  <img alt="" class="waitobr" src="pes.jpg">   -->
+
+ </div>
+</div>
+
+
+  <!-- animace pres vsechno  -->
+  <div id="krizek" class="obranim">
+   <img src="bad.png"/>
+  </div>
+  
+<!-- *********************************** -->
+
+
+
+<div id="afui" class="android">
+
+    <!--Left Side Menu Navigation bar -->
+    <nav id="nav_0">
+        <ul class="list">
+        <li><a href="#Zkouseni" class="icon home">Learn</a></li>
+        <li><a href="#Kviz" class="icon picture">Test</a></li>
+        <li><a href="#husteikony" class="icon info">Husté ikony</a></li>
+        <li><a href="#nastav" class="icon settings">Setup</a></li>
+        <li><a href="#pageIcons" class="icon heart">Icons</a></li>
+            <li><a href="#page1" class="icon home big">Home</a></li>
+            <li><a href="#page2" class="icon heart big">Favorites</a></li>
+            <li><a href="javascript:window.open('http://opesol.org/ANDROID/PRAHA/weather.html')"  class="icon magnifier big"> Weather</a></li>
+            <li><a href="javascript:window.open('http://opesol.org/ANDROID/PLZEN/')" class="icon chat big">Messages</a></li>
+            <li><a href="#page4" class="icon lamp big">Profile</a></li>
+            <li><a href="#settings" class="icon settings big">Settings</a></li>
+            <li><a href="#errorspage" class="icon error big">Errors</a></li>
+            <li><a href="#logpage" class="icon tv big">Logging</a></li>
+        </ul>
+    </nav>
+    <header id="header_0" data-appbuilder-object="header">
+        <a id="backButton" href="#" class="button back" style="visibility: visible; ">Back</a>
+        <h1 id="pageTitle" class="">Test</h1> 
+    </header>
+
+
+    
+    <div id="content" style="">
+
+   <!-- ************  P A N E L   Zkouseni *****************************   -->
+    <div class="panel bgzkousej" title="Úvod" id="Zkouseni" style="overflow:hidden" selected="selected">
+       <div class="button-grouped vertical">
+         <a class="button big icon fa-android"  href="#pageIcons" style="font-size: 1.5em;color:green;"
+           onclick="javascript:showicons('icons.css');">
+           Show icons </a>
+         <a class="button big icon fa-android"  href="#pageIcons" style="font-size: 1.5em;color:green;"
+           onclick="javascript:downloadIcons('icons.css');">
+           Download icons </a>
+        </div>
+       
+         <img alt="data/5H.svg" src="data/5H.svg" />
+
+  
+            
+        </div>
+        
+        <!-- ************  P A N E L   Kviz *****************************   -->
+        <div class="panel bgkviz" title="Kvízz" id="Kviz" >
+        T e s t  přehrávání
+                <a class="button big"   
+           onclick="javascript:Prehraj('cdvfile://localhost/persistent/path/to/downloads/Hlas.mp3');">Prehraj(cdvfile://localhost/persistent/path/to/downloads/Hlas.mp3)</a>
+           <hr/>           
+        <a class="button big"   
+           onclick="javascript:Prehraj('cdvfile://localhost/files/SPRT/to/downloads/Hlas.mp3');">Prehraj(cdvfile://localhost/files/SPRT/to/downloads/Hlas.mp3)</a>
+           
+        <hr/><hr/>
+
+         <a class="button big"   
+           onclick="javascript:alert('fs_ = ' + fs_);">UKAZ FS_ </a>
+        <hr/>
+
+
+        </div>
+        
+
+        <!-- ************  P A N E L   prohlizeni PDF apod *****************************   -->
+  <script type="text/javascript">    
+//***********************************************************
+//
+// onSuccess Callback
+// This method accepts a JSON object, which contains the
+// boolean response
+//
+var onSuccessPDFcan = function(data) {
+    alert('extension: '          + data.extension          + '\n' +
+          'canBeOpen: '         + data.canBeOpen);
+};
+
+// onError Callback receives a json object
+//
+function onErrorPDFcan(error) {
+    alert('message: '    + error.message);
+}
+
+//
+var onSuccessPDF = function(data) {
+    alert('message: '          + data);
+};
+
+// onError Callback
+//
+function onErrorPDF(error) {
+    alert('Error message: '    + error);
+    	console.log("PDF error " + error);
+	console.dir(error);
+
+}
+
+
+
+function showPdfcan(soubor)
+{
+ // window.cordova.plugins.FileOpener.canOpenFile("cdvfile://localhost/persistent/SHEETS/"+soubor,onSuccessPDFcan, onErrorPDFcan);
+ window.cordova.plugins.FileOpener.canOpenFile("http://www.dramatik.cz/SHEETS/"+soubor,onSuccessPDFcan, onErrorPDFcan);
+}
+function showPdf(soubor)
+{
+ // window.cordova.plugins.FileOpener.openFile("cdvfile://localhost/persistent/SHEETS/"+soubor,onSuccessPDF, onErrorPDF);
+  window.cordova.plugins.FileOpener.openFile("http://www.dramatik.cz/SHEETS/"+soubor,onSuccessPDF, onErrorPDF);
+}
+
+function showPopIkona(ikona)
+{
+   // $.ui.popup('Hi there <hr/> hi <span class="icon fa-android">BAF</span>');
+   var s = '<span style="font-size: 2.5em;color:yellow;" class="big icon ' + ikona + '"> <hr/> ' + ikona + '</span>'; 
+   $.ui.popup( {
+   title:"<h1>Název ikony</h1> ",
+   message:s,
+   cancelOnly:true
+ });
+   
+}
+
+
+
+</script>
+  
+  
+  
+  
+  
+        <div class="panel" title="Historie učení" data-nav="nav_0" id="pagePdf" 
+        data-appbuilder-object="page" data-transition="pop"
+        style="">
+        
+         <button class="button big icon fa-android"  style="font-size: 2.5em;color:green;"
+           onclick="javascript:showPdfcan('JardaPeregrin.pdf');">
+           Can show PDF ? </a>
+         <button class="button big icon fa-file-text"  style="font-size: 2.5em;color:green;"
+           onclick="javascript:showPdf('JardaPeregrin.pdf');">
+           Show PDF</a>
+                   
+
+        
+
+        </div>
+
+        
+        <!-- ************  P A N E L   husteikony *****************************   -->
+        <div class="panel" title="Husté íkony" data-nav="nav_0" id="husteikony" 
+        data-appbuilder-object="page" data-transition="pop"
+        style="">
+        <a class="button big icon fa-android"  href="#husteikony" style="font-size: 1.5em;color:yellow;"
+           onclick="javascript:showiconsHus('icons.css');">
+           Show icons </a>
+        <a class="button big icon fa-android"  href="#husteikony" style="font-size: 1.5em;color:yellow;"
+           onclick="javascript:showiconsHus('icons.fa.css');">
+           Show fa-icons </a>
+
+        <a class="button big icon fa-android"  href="#husteikony" style="font-size: 1.5em;color:yellow;"
+           onclick="javascript:showPopIkona('fa-android');">
+           IKONA </a>
+
+        <div id="husikony" style="overflow:auto;font-size: 2em;">Nevyplneno ??</div>
+        
+        </div>
+        
+        <!-- ************  P A N E L   Nastaveni *****************************   -->        
+        <div class="panel" title="Setup" data-nav="nav_0" id="nastav" 
+        style="">
+        <hr/>
+        <a class="button big"   
+           onclick="javascript:$.ui.setTitle('ZMENA NADPISU');">Change heading</a>
+                  <hr/>
+                  <!-- <a class="button red" onclick="actionmy();">actionmy</a>   -->  
+                  <a href="#logpage"  class="button red">Log history</a>
+       <h1>Zařízení</h1>
+        <table>
+          <tr>
+           <td>Verze cordova : </td>
+           <td><span id="vercor">Device: U N K N O W N </span></td>
+          </tr>
+          <tr>
+           <td></td>
+           <td></td>
+          </tr>
+        </table>
+                  
+       </div>  <!-- konec panelu Nastaveni -->
+        
+        
+        
+      <!-- log panel -->
+        <div class="panel" title="Log panel" id="logpage" 
+         style="overflow:auto; height:750px;" 
+        data-nav="nav_0" data-footer="none"  >
+            <h1>Log </h1>
+ 		<ul id="logtxt" class="list" style="overflow:auto; height:750px;" 
+ 		    data-appbuilder-object="list" data-position="static" style="z-index: 0;">
+
+			     
+		</ul>    
+	</div>
+	
+	
+      <!-- Ikony panel -->
+        <div class="panel" title="Ikony" id="pageIcons" 
+         style="overflow:auto;" 
+        data-nav="nav_0"  >
+ 		<img id="obrazek" title="OBRAZEK " src="data/AC.svg" /> 
+ 		<img id="obrazek" title="OBRAZEK " src="data/10C.svg" /> 
+ 		<img id="obrazek" title="OBRAZEK " src="data/2H.svg" /> 
+ 		<img id="obrazek" title="OBRAZEK " src="data/5D.svg" /> 
+ 	</div>
+
+	
+    </div> <!-- konec Content -->
+ 
+      <div id="navbar">
+        <a href="#Zkouseni" class="icon home">Learn</a>
+        <a href="#Kviz" class="icon picture">Test</a>
+        <a href="#Historie" class="icon info">Stat</a>
+        <a href="#nastav" class="icon settings">Setup</a>
+        <a href="#pageIcons" class="icon heart">Icons</a>
+    </div>
+    
+    </div>
+
+
+        <script type="text/javascript" src="cordova.js"></script>  
+        <script type="text/javascript" src="js/index.js"></script>
+        <script type="text/javascript">
+          app.initialize();
+        </script> 
+        
+</body>        
+</html>
